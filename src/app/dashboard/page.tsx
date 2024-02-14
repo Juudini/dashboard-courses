@@ -1,18 +1,16 @@
-import ECommerce from "@/components/Dashboard/E-commerce";
-import { Metadata } from "next";
-import DefaultLayout from "@/components/Layouts/DefaultLaout";
+import { auth } from "@/auth.config";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Bienvenid@ al dashboard",
-};
-
-export default function Home() {
+export default async function DashboardPage() {
+  //PARA QUE NO HAYA AUTH ELIMINAR DESDE ACA
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/auth/signin?returnTo=/dashboard");
+  }
+  //HASTA ACÁ
   return (
-    <>
-      <DefaultLayout>
-        <ECommerce />
-      </DefaultLayout>
-    </>
+    <div>
+      <h1>Hellou Dashboard</h1>
+    </div>
   );
 }
