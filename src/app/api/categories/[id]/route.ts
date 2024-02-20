@@ -85,6 +85,7 @@ export async function PUT(req: Request, { params }: Segments) {
 
 export async function DELETE(req: Request, { params }: Segments) {
   try {
+    console.log(params);
     const deletedCategory = await prisma.category.delete({
       where: {
         id: params.id,

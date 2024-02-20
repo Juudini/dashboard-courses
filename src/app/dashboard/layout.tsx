@@ -1,14 +1,26 @@
-export default async function DashboardLayout({
+"use client";
+import React, { useEffect, useState } from "react";
+import Loader from "@/components/dashboard/loader";
+import "../../css/dashboard.css";
+export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    setTimeout(() => setLoading(false), 1000);
+  }, []);
+
   return (
-    <>
-      <div className="ml-auto mb-6 lg:w-[75%] xl:w-[80%] 2xl:w-[85%] min-h-screen">
-        <h1>Dashboard LAYOUT</h1>
-        <div className="px-6 pt-6">{children}</div>
-      </div>
-    </>
+    <html lang="es">
+      <body suppressHydrationWarning={true}>
+        <div className="dark:bg-boxdark-2 dark:text-bodydark">
+          {loading ? <Loader /> : children}
+        </div>
+      </body>
+    </html>
   );
 }

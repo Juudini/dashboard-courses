@@ -2,6 +2,12 @@ import { NextResponse, NextRequest } from "next/server";
 import { ZodError, z } from "zod";
 import { PaginationDto, executePagination } from "@/shared";
 import prisma from "@/libs/prisma";
+import { v2 as cloudinary } from "cloudinary";
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
+});
 
 const productSchema = z.object({
   title: z
@@ -16,7 +22,6 @@ const productSchema = z.object({
     .number()
     .min(1, { message: "Price must be at least 3 characters long" }),
   categories: z.array(z.string()),
-  image: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -66,6 +71,9 @@ export async function GET(request: Request) {
       take: limit,
       skip: skipValue,
       orderBy: { price: paginationDto.sort },
+      include: {
+        productImage: true,
+      },
     });
 
     const paginationResults: PaginationResultsProps = executePagination({
@@ -89,13 +97,44 @@ export async function GET(request: Request) {
   }
 }
 
+// !! NO SE ESTÁ USANDO EL ZOD VALIDATOR
 export async function POST(req: Request) {
   try {
-    const validatedData = productSchema.parse(await req.json());
+    const formData = await req.formData();
 
-    const payloadDb = await prisma.product.create({ data: validatedData });
+    // Parse other form fields
+    const title = formData.get("title") as string;
+    const price = formData.get("price") as string;
+    const description = formData.get("description") as string;
+    const categoriesJson = formData.get("categories") as string;
+    const categories = JSON.parse(categoriesJson);
+    // Assuming you have a 'images' field in your form
+    const images: any = formData.getAll("images");
 
-    return NextResponse.json({ payload: payloadDb });
+    // Create the product in the database
+    const productDb = await prisma.product.create({
+      data: {
+        title,
+        price: parseInt(price, 10),
+        categories,
+        description,
+      },
+    });
+
+    // Upload and associate images with the product
+    if (images.length > 0) {
+      const uploadedImages = await uploadImages(images);
+
+      // Create entries for images in the database
+      await prisma.productImage.createMany({
+        data: uploadedImages!.map((image: any) => ({
+          url: image,
+          productId: productDb.id,
+        })),
+      });
+    }
+
+    return NextResponse.json({ payload: productDb });
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(
@@ -116,3 +155,28 @@ export async function POST(req: Request) {
     }
   }
 }
+const uploadImages = async (images: File[]) => {
+  try {
+    const uploadPromises = images.map(async (image) => {
+      try {
+        const buffer = await image.arrayBuffer();
+        const base64Image = Buffer.from(buffer).toString("base64");
+
+        const cloudinaryResponse = await cloudinary.uploader.upload(
+          `data:${image.type};base64,${base64Image}`
+        );
+
+        return cloudinaryResponse.secure_url;
+      } catch (error) {
+        console.error("Error al subir la imagen a Cloudinary:", error);
+        return null;
+      }
+    });
+
+    const uploadedImages = await Promise.all(uploadPromises);
+    return uploadedImages;
+  } catch (error) {
+    console.error("Error al subir imágenes a Cloudinary:", error);
+    return null;
+  }
+};

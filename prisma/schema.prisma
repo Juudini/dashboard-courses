@@ -11,16 +11,13 @@ datasource db {
 }
 
 model Product {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  title       String
-  description String
-  price       Int
-  isActive    Boolean? @default(true)
-  image       String[] @default([""])
-  categories  String[]
-
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  description  String
+  price        Int
+  isActive     Boolean?       @default(true)
+  categories   String[]
+  productImage ProductImage[]
 }
 
 model Category {
@@ -67,10 +64,10 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   image         String?
+  products      String[]
 
   accounts Account[]
   sessions Session[]
-  products Product[]
 }
 
 model VerificationToken {
@@ -80,4 +77,12 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model ProductImage {
+  id  String @id @default(auto()) @map("_id") @db.ObjectId
+  url String
+
+  Product   Product @relation(fields: [productId], references: [id])
+  productId String
 }
